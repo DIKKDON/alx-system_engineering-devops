@@ -3,3 +3,4 @@
 sed -i 's/listen 8080 default_server;/listen 80 default_server;/g' /etc/nginx/sites-enabled/default
 pkill nginx
 service nginx restart
+
