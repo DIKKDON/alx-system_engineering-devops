@@ -28,4 +28,3 @@ if __name__ == '__main__':
             to_write = '"{}","{}","{}","{}"\n'.format(
                 employee_id, username, task_status, task_title)
             f.write(to_write)
-
