@@ -1,50 +1,54 @@
 #!/usr/bin/python3
-"""Advanced Apis Module"""
+"""queries the Reddit API, parses the title of all hot articles,
+and prints a sorted count of given keywords"""
+
+import re
 import requests
-import sys
 
 
-def count_words(subreddit, wordlist, hot_list=[], after=None,):
-    """function that queries the Reddit API and prints
-    the titles of the first 10 hot posts listed for a given subreddit."""
+def count_words(subreddit, word_list, word_dict={},
+                after='', count=0, not_first=0):
+    """queries the Reddit API, parses the title of all hot articles,
+    and prints a sorted count of given keywords"""
 
-    headers = {"User-Agent": "user_agent"}
-    url = "https://www.reddit.com/r/{}/hot.json".format(
-        subreddit)
-    params = {"limit": 100, "after": after}
+    headers = {'User-Agent': 'Mozilla/5.0 (Linux; Android 12; SM-S906N\
+               Build/QP1A.190711.020; wv) AppleWebKit/537.36 (KHTML,\
+               like Gecko) Version/4.0 Chrome/80.0.3987.119 Mobile\
+               Safari/537.36'
+               }
+    parameters = {
+        'after': after,
+        'count': count,
+        'limit': 100
+    }
+    try:
+        data = requests.get(
+            'https://www.reddit.com/r/{}/hot/.json'.format(subreddit),
+            headers=headers, params=parameters, allow_redirects=False).json()
+        [filter_word(word_list, word_dict, post['data']['title'])
+         for post in data['data']["children"]]
 
-    response = requests.get(
-        url=url,
-        headers=headers,
-        params=params,
-        allow_redirects=False)
-
-    if response.status_code == 200:
-        data = response.json()['data']
-        children = data['children']
-        hot_list.extend([child['data']['title']
-                         for child in children])
-        after = response.json()['data']['after']
-        if not after:
-            wordcounts = {}
-            search_str = " ".join(hot_list)
-            wordcounts = {word.lower(): search_str.lower().count(
-                word.lower()) for word in wordlist}
-            sorted_wordcounts = dict(
-                sorted(wordcounts.items(),
-                       key=lambda item: (-item[1], item[0])))
-            for key, value in sorted_wordcounts.items():
-                if value != 0:
-                    print("{}: {}".format(key, value))
-            return (0)
-        return count_words(subreddit, wordlist, hot_list, after)
-    else:
+        if data['data']['after']:
+            count_words(subreddit, word_list, word_dict,
+                        after=data['data']['after'],
+                        count=count+data['data']['dist'], not_first=1)
+            if not_first == 0:
+                for key, value in sorted(word_dict.items(),
+                                         key=lambda val: (-val[1], val[0])):
+                    print('{}:'.format(key), value)
+    except Exception:
         return None
 
 
-if __name__ == '__main__':
-    if len(sys.argv) > 0:
-        subred = sys.argv[1]
-        if (len(sys.argv) > 1):
-            wordlist = sys.argv[2].split()
-        count_words(subred, wordlist, [])
+def filter_word(word_list, word_dict, string):
+    """filter words count number of words and all it to total in word_dict"""
+    word_list = [word.lower() for word in word_list]
+
+    for word in word_list:
+        reg_string = r'\b{}\b'.format(word)
+        word_count = len(re.findall(reg_string, string, flags=re.IGNORECASE))
+        if word_count > 0:
+            if word_dict.get(word, None) is None:
+                word_dict[word] = word_count
+            else:
+                word_dict[word] = word_dict[word] + word_count
